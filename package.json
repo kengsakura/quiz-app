@@ -1,0 +1,17 @@
+{
+    "name": "exponent-quiz-app",
+    "version": "1.0.0",
+    "description": "แอปทดสอบเลขยกกำลัง",
+    "main": "index.html",
+    "scripts": {
+      "start": "echo 'Open index.html in your browser'"
+    },
+    "keywords": [
+      "quiz",
+      "education",
+      "mathematics",
+      "exponent"
+    ],
+    "author": "Your Name",
+    "license": "MIT"
+  }

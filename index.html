@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>แอปทดสอบเลขยกกำลัง</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ข้อสอบเริ่มต้น
+        const defaultQuestions = [
+            { id: 1, question: "2³ = ?", answer: "8", points: 1 },
+            { id: 2, question: "5² = ?", answer: "25", points: 1 },
+            { id: 3, question: "3⁴ = ?", answer: "81", points: 1 },
+            { id: 4, question: "10² = ?", answer: "100", points: 1 },
+            { id: 5, question: "2⁵ = ?", answer: "32", points: 1 },
+            { id: 6, question: "4³ = ?", answer: "64", points: 1 },
+            { id: 7, question: "7² = ?", answer: "49", points: 1 },
+            { id: 8, question: "2⁸ = ?", answer: "256", points: 2 },
+            { id: 9, question: "9² = ?", answer: "81", points: 1 },
+            { id: 10, question: "6² = ?", answer: "36", points: 1 },
+            { id: 11, question: "3³ = ?", answer: "27", points: 1 },
+            { id: 12, question: "5³ = ?", answer: "125", points: 2 },
+            { id: 13, question: "2⁶ = ?", answer: "64", points: 1 },
+            { id: 14, question: "8² = ?", answer: "64", points: 1 },
+            { id: 15, question: "4⁴ = ?", answer: "256", points: 2 },
+            { id: 16, question: "10³ = ?", answer: "1000", points: 2 },
+            { id: 17, question: "2⁷ = ?", answer: "128", points: 2 },
+            { id: 18, question: "11² = ?", answer: "121", points: 1 },
+            { id: 19, question: "3⁵ = ?", answer: "243", points: 3 },
+            { id: 20, question: "2¹⁰ = ?", answer: "1024", points: 3 }
+        ];
+
+        // รายชื่อนักเรียนเริ่มต้น
+        const defaultStudents = [
+            "นายกิตติพงษ์ ใจดี",
+            "นางสาวสุภาพร แสงทอง",
+            "นายธนากร รุ่งเรือง",
+            "นางสาวพิมพ์ชนก ดอกไม้",
+            "นายวีระพล ชัยชนะ"
+        ];
+
+        // ห้องเรียนเริ่มต้น
+        const defaultClassrooms = ["ม.1/1", "ม.1/2", "ม.2/1", "ม.2/2", "ม.3/1", "ม.3/2"];
+
+        function ExponentQuizApp() {
+            // States
+            const [gameState, setGameState] = useState('setup');
+            const [students, setStudents] = useState(defaultStudents);
+            const [classrooms, setClassrooms] = useState(defaultClassrooms);
+            const [selectedStudent, setSelectedStudent] = useState('');
+            const [selectedClassroom, setSelectedClassroom] = useState('');
+            const [questions, setQuestions] = useState(defaultQuestions);
+            const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+            const [userAnswer, setUserAnswer] = useState('');
+            const [answers, setAnswers] = useState([]);
+            const [timeRemaining, setTimeRemaining] = useState(5);
+            const [timePerQuestion, setTimePerQuestion] = useState(5);
+            const [score, setScore] = useState(0);
+            const [showSettings, setShowSettings] = useState(false);
+            const [newStudent, setNewStudent] = useState('');
+            const [newClassroom, setNewClassroom] = useState('');
+            const [testHistory, setTestHistory] = useState([]);
+            const [currentQuizSet, setCurrentQuizSet] = useState('ชุดที่ 1 (Default)');
+            const [quizSets, setQuizSets] = useState({
+                'ชุดที่ 1 (Default)': defaultQuestions
+            });
+            const [isListening, setIsListening] = useState(false);
+            const [speechSupported, setSpeechSupported] = useState(true);
+            const [enableSpeech, setEnableSpeech] = useState(true);
+            
+            const fileInputRef = useRef(null);
+            const historyImportRef = useRef(null);
+
+            // Timer effect
+            useEffect(() => {
+                if (gameState === 'playing' && timeRemaining > 0) {
+                    const timer = setTimeout(() => {
+                        setTimeRemaining(timeRemaining - 1);
+                    }, 1000);
+                    return () => clearTimeout(timer);
+                } else if (gameState === 'playing' && timeRemaining === 0) {
+                    handleNextQuestion();
+                }
+            }, [timeRemaining, gameState]);
+
+            // Check speech recognition support
+            useEffect(() => {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    setSpeechSupported(false);
+                }
+            }, []);
+
+            // Speech recognition function
+            const startListening = (language = 'th-TH') => {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                
+                if (!SpeechRecognition) {
+                    alert('เบราว์เซอร์ของคุณไม่รองรับการพูดคำตอบ กรุณาใช้ Chrome, Edge หรือ Safari');
+                    setSpeechSupported(false);
+                    return;
+                }
+
+                const recognition = new SpeechRecognition();
+                recognition.lang = language;
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    setIsListening(true);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    
+                    let numberText = transcript;
+                    
+                    if (language === 'th-TH') {
+                        // แปลงคำภาษาไทยเป็นตัวเลข
+                        const thaiNumbers = {
+                            'ศูนย์': '0', 'หนึ่ง': '1', 'สอง': '2', 'สาม': '3', 'สี่': '4',
+                            'ห้า': '5', 'หก': '6', 'เจ็ด': '7', 'แปด': '8', 'เก้า': '9',
+                            'สิบ': '10', 'ยี่สิบ': '20', 'สามสิบ': '30', 'สี่สิบ': '40',
+                            'ห้าสิบ': '50', 'หกสิบ': '60', 'เจ็ดสิบ': '70', 'แปดสิบ': '80',
+                            'เก้าสิบ': '90', 'ร้อย': '100', 'พัน': '1000', 'หมื่น': '10000'
+                        };
+
+                        for (const [thai, num] of Object.entries(thaiNumbers)) {
+                            numberText = numberText.replace(new RegExp(thai, 'g'), num);
+                        }
+                    } else {
+                        // สำหรับภาษาอังกฤษ
+                        const englishNumbers = {
+                            'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+                            'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+                            'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
+                            'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
+                            'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
+                            'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
+                            'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000'
+                        };
+                        
+                        numberText = numberText.toLowerCase();
+                        
+                        for (const [eng, num] of Object.entries(englishNumbers)) {
+                            numberText = numberText.replace(new RegExp(eng, 'g'), num);
+                        }
+                    }
+                    
+                    // เอาเฉพาะตัวเลข
+                    numberText = numberText.replace(/[^\d]/g, '');
+                    
+                    if (numberText) {
+                        setUserAnswer(numberText);
+                    } else {
+                        const match = transcript.match(/\d+/);
+                        if (match) {
+                            setUserAnswer(match[0]);
+                        }
+                    }
+                    
+                    setIsListening(false);
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    setIsListening(false);
+                    
+                    if (event.error === 'not-allowed') {
+                        alert('กรุณาอนุญาตการใช้ไมโครโฟน');
+                    } else if (event.error === 'no-speech') {
+                        alert('ไม่ได้ยินเสียง กรุณาพูดใหม่');
+                    }
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error('Failed to start speech recognition:', error);
+                    setIsListening(false);
+                    alert('ไม่สามารถเริ่มการรับเสียงได้');
+                }
+            };
+
+            // เริ่มเกม
+            const startGame = () => {
+                if (!selectedStudent) {
+                    alert('กรุณาเลือกชื่อนักเรียนก่อนเริ่มทำข้อสอบ');
+                    return;
+                }
+                if (!selectedClassroom) {
+                    alert('กรุณาเลือกห้องเรียนก่อนเริ่มทำข้อสอบ');
+                    return;
+                }
+                setGameState('playing');
+                setCurrentQuestionIndex(0);
+                setAnswers([]);
+                setScore(0);
+                setTimeRemaining(timePerQuestion);
+                setQuestions(quizSets[currentQuizSet] || defaultQuestions);
+            };
+
+            // ตรวจคำตอบและไปข้อถัดไป
+            const handleNextQuestion = () => {
+                const currentQuestion = questions[currentQuestionIndex];
+                const isCorrect = userAnswer.trim() === currentQuestion.answer;
+                
+                setAnswers([...answers, {
+                    questionId: currentQuestion.id,
+                    question: currentQuestion.question,
+                    userAnswer: userAnswer || '-',
+                    correctAnswer: currentQuestion.answer,
+                    isCorrect: isCorrect,
+                    points: isCorrect ? currentQuestion.points : 0
+                }]);
+
+                if (isCorrect) {
+                    setScore(score + currentQuestion.points);
+                }
+
+                setUserAnswer('');
+
+                if (currentQuestionIndex < questions.length - 1) {
+                    setCurrentQuestionIndex(currentQuestionIndex + 1);
+                    setTimeRemaining(timePerQuestion);
+                } else {
+                    // บันทึกประวัติ
+                    const newScore = score + (isCorrect ? currentQuestion.points : 0);
+                    const totalPossible = questions.reduce((sum, q) => sum + q.points, 0);
+                    const newHistory = {
+                        id: Date.now(),
+                        studentName: selectedStudent,
+                        classroom: selectedClassroom,
+                        quizSet: currentQuizSet,
+                        score: newScore,
+                        totalScore: totalPossible,
+                        percentage: ((newScore / totalPossible) * 100).toFixed(1),
+                        date: new Date().toLocaleString('th-TH'),
+                        answers: [...answers, {
+                            questionId: currentQuestion.id,
+                            question: currentQuestion.question,
+                            userAnswer: userAnswer || '-',
+                            correctAnswer: currentQuestion.answer,
+                            isCorrect: isCorrect,
+                            points: isCorrect ? currentQuestion.points : 0
+                        }]
+                    };
+                    setTestHistory([...testHistory, newHistory]);
+                    setScore(newScore);
+                    setGameState('finished');
+                }
+            };
+
+            // จัดการการกด Enter
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter' && userAnswer.trim() !== '') {
+                    handleNextQuestion();
+                }
+            };
+
+            // นำเข้าข้อสอบจากไฟล์ JSON
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (Array.isArray(data) && data.length > 0) {
+                                const setName = prompt('ตั้งชื่อชุดข้อสอบ:', `ชุดที่ ${Object.keys(quizSets).length + 1}`);
+                                if (setName) {
+                                    setQuizSets({...quizSets, [setName]: data});
+                                    setCurrentQuizSet(setName);
+                                    alert('นำเข้าข้อสอบสำเร็จ!');
+                                }
+                            } else {
+                                alert('รูปแบบไฟล์ไม่ถูกต้อง');
+                            }
+                        } catch (error) {
+                            alert('ไม่สามารถอ่านไฟล์ได้');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            // นำเข้าประวัติ
+            const handleHistoryImport = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (data.history && data.students && data.classrooms && data.quizSets) {
+                                setTestHistory(data.history);
+                                setStudents(data.students);
+                                setClassrooms(data.classrooms);
+                                setQuizSets(data.quizSets);
+                                alert('นำเข้าข้อมูลสำเร็จ!');
+                            } else {
+                                alert('รูปแบบไฟล์ไม่ถูกต้อง');
+                            }
+                        } catch (error) {
+                            alert('ไม่สามารถอ่านไฟล์ได้');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+
+            // ส่งออกประวัติ
+            const exportHistory = () => {
+                const data = {
+                    history: testHistory,
+                    students: students,
+                    classrooms: classrooms,
+                    quizSets: quizSets,
+                    exportDate: new Date().toLocaleString('th-TH')
+                };
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `quiz_history_${new Date().getTime()}.json`;
+                link.click();
+            };
+
+            // เพิ่มนักเรียน
+            const addStudent = () => {
+                if (newStudent.trim() && !students.includes(newStudent.trim())) {
+                    setStudents([...students, newStudent.trim()]);
+                    setNewStudent('');
+                }
+            };
+
+            // เพิ่มห้องเรียน
+            const addClassroom = () => {
+                if (newClassroom.trim() && !classrooms.includes(newClassroom.trim())) {
+                    setClassrooms([...classrooms, newClassroom.trim()]);
+                    setNewClassroom('');
+                }
+            };
+
+            // คำนวณคะแนนรวม
+            const totalPossiblePoints = questions.reduce((sum, q) => sum + q.points, 0);
+
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-4">
+                    <div className="max-w-4xl mx-auto">
+                        <div className="bg-white rounded-lg shadow-xl">
+                            <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 rounded-t-lg">
+                                <h1 className="text-2xl font-bold text-center">แอปทดสอบเลขยกกำลัง</h1>
+                            </div>
+                            <div className="p-6">
+                                {/* หน้าตั้งค่า */}
+                                {gameState === 'setup' && (
+                                    <div className="space-y-6">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
+                                                    <i className="fas fa-school"></i>
+                                                    เลือกห้องเรียน
+                                                </label>
+                                                <select 
+                                                    value={selectedClassroom} 
+                                                    onChange={(e) => setSelectedClassroom(e.target.value)}
+                                                    className="w-full p-2 border rounded-lg"
+                                                >
+                                                    <option value="">เลือกห้องเรียน</option>
+                                                    {classrooms.map((classroom, index) => (
+                                                        <option key={index} value={classroom}>
+                                                            {classroom}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
+                                                    <i className="fas fa-user"></i>
+                                                    เลือกชื่อนักเรียน
+                                                </label>
+                                                <select 
+                                                    value={selectedStudent} 
+                                                    onChange={(e) => setSelectedStudent(e.target.value)}
+                                                    className="w-full p-2 border rounded-lg"
+                                                >
+                                                    <option value="">เลือกชื่อนักเรียน</option>
+                                                    {students.map((student, index) => (
+                                                        <option key={index} value={student}>
+                                                            {student}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
+                                                <i className="fas fa-file-alt"></i>
+                                                ชุดข้อสอบ
+                                            </label>
+                                            <select 
+                                                value={currentQuizSet} 
+                                                onChange={(e) => setCurrentQuizSet(e.target.value)}
+                                                className="w-full p-2 border rounded-lg"
+                                            >
+                                                {Object.keys(quizSets).map((setName, index) => (
+                                                    <option key={index} value={setName}>
+                                                        {setName} ({quizSets[setName].length} ข้อ)
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-4">
+                                            <button
+                                                onClick={() => setShowSettings(!showSettings)}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
+                                            >
+                                                <i className="fas fa-cog"></i>
+                                                ตั้งค่า
+                                            </button>
+                                            
+                                            <button
+                                                onClick={() => fileInputRef.current?.click()}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
+                                            >
+                                                <i className="fas fa-upload"></i>
+                                                นำเข้าข้อสอบ
+                                            </button>
+
+                                            <button
+                                                onClick={() => setGameState('history')}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
+                                            >
+                                                <i className="fas fa-history"></i>
+                                                ดูประวัติ ({testHistory.length})
+                                            </button>
+
+                                            <button
+                                                onClick={exportHistory}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
+                                                disabled={testHistory.length === 0}
+                                            >
+                                                <i className="fas fa-download"></i>
+                                                บันทึกข้อมูล
+                                            </button>
+
+                                            <button
+                                                onClick={() => historyImportRef.current?.click()}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
+                                            >
+                                                <i className="fas fa-save"></i>
+                                                โหลดข้อมูล
+                                            </button>
+
+                                            <input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept=".json"
+                                                onChange={handleFileUpload}
+                                                className="hidden"
+                                            />
+                                            <input
+                                                ref={historyImportRef}
+                                                type="file"
+                                                accept=".json"
+                                                onChange={handleHistoryImport}
+                                                className="hidden"
+                                            />
+                                        </div>
+
+                                        {/* แผงตั้งค่า */}
+                                        {showSettings && (
+                                            <div className="p-4 bg-gray-50 rounded-lg space-y-4">
+                                                <div>
+                                                    <label className="font-semibold">เวลาต่อข้อ (วินาที)</label>
+                                                    <input
+                                                        type="number"
+                                                        value={timePerQuestion}
+                                                        onChange={(e) => setTimePerQuestion(Number(e.target.value))}
+                                                        min="1"
+                                                        max="60"
+                                                        className="w-full p-2 border rounded-lg mt-1"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={enableSpeech}
+                                                            onChange={(e) => setEnableSpeech(e.target.checked)}
+                                                            className="w-4 h-4"
+                                                        />
+                                                        เปิดใช้งานการตอบด้วยเสียง
+                                                    </label>
+                                                    {!speechSupported && (
+                                                        <div className="text-sm text-red-500 mt-1">
+                                                            เบราว์เซอร์นี้ไม่รองรับการพูด
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div>
+                                                    <label className="font-semibold">เพิ่มห้องเรียน</label>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <input
+                                                            value={newClassroom}
+                                                            onChange={(e) => setNewClassroom(e.target.value)}
+                                                            placeholder="ชื่อห้อง"
+                                                            onKeyPress={(e) => e.key === 'Enter' && addClassroom()}
+                                                            className="flex-1 p-2 border rounded-lg"
+                                                        />
+                                                        <button 
+                                                            onClick={addClassroom}
+                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                                        >
+                                                            เพิ่ม
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div>
+                                                    <label className="font-semibold">เพิ่มนักเรียน</label>
+                                                    <div className="flex gap-2 mt-1">
+                                                        <input
+                                                            value={newStudent}
+                                                            onChange={(e) => setNewStudent(e.target.value)}
+                                                            placeholder="ชื่อ-นามสกุล"
+                                                            onKeyPress={(e) => e.key === 'Enter' && addStudent()}
+                                                            className="flex-1 p-2 border rounded-lg"
+                                                        />
+                                                        <button 
+                                                            onClick={addStudent}
+                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                                        >
+                                                            เพิ่ม
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <p>ข้อสอบปัจจุบัน: {quizSets[currentQuizSet]?.length || 0} ข้อ</p>
+                                                    <p>คะแนนรวม: {quizSets[currentQuizSet]?.reduce((sum, q) => sum + q.points, 0) || 0} คะแนน</p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={startGame}
+                                            className="w-full py-3 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600"
+                                            disabled={!selectedStudent || !selectedClassroom}
+                                        >
+                                            <i className="fas fa-play mr-2"></i>
+                                            เริ่มทำข้อสอบ
+                                        </button>
+
+                                        <div className="bg-blue-50 p-4 rounded-lg">
+                                            <strong>รูปแบบไฟล์ JSON สำหรับนำเข้าข้อสอบ:</strong>
+                                            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded">
+{`[
+  {"id": 1, "question": "2³ = ?", "answer": "8", "points": 1},
+  {"id": 2, "question": "5² = ?", "answer": "25", "points": 1}
+]`}
+                                            </pre>
+                                            {enableSpeech && speechSupported && (
+                                                <div className="mt-3">
+                                                    <strong>การตอบด้วยเสียง:</strong>
+                                                    <ul className="text-sm mt-1">
+                                                        <li>• พูดตัวเลขคำตอบได้ทั้งภาษาไทยและอังกฤษ</li>
+                                                        <li>• ตัวอย่าง: "แปด", "สองห้า", "หนึ่งพันสองร้อย"</li>
+                                                        <li>• รองรับ Chrome, Edge, Safari</li>
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* หน้าประวัติ */}
+                                {gameState === 'history' && (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <h2 className="text-xl font-bold">ประวัติการทำข้อสอบ</h2>
+                                            <button
+                                                onClick={() => setGameState('setup')}
+                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg"
+                                            >
+                                                กลับ
+                                            </button>
+                                        </div>
+
+                                        {testHistory.length === 0 ? (
+                                            <div className="bg-yellow-50 p-4 rounded-lg">
+                                                <p>ยังไม่มีประวัติการทำข้อสอบ</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3">
+                                                {testHistory.map((record) => (
+                                                    <div key={record.id} className="p-4 bg-white border rounded-lg shadow">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="font-semibold text-lg">{record.studentName}</div>
+                                                                <div className="text-gray-600">ห้อง {record.classroom} • {record.quizSet}</div>
+                                                                <div className="text-sm text-gray-500">{record.date}</div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <div className="text-2xl font-bold text-blue-600">
+                                                                    {record.score}/{record.totalScore}
+                                                                </div>
+                                                                <div className="text-lg font-semibold text-green-600">
+                                                                    {record.percentage}%
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* หน้าทำข้อสอบ */}
+                                {gameState === 'playing' && (
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <div>
+                                                <div className="text-lg font-semibold">
+                                                    ข้อที่ {currentQuestionIndex + 1} / {questions.length}
+                                                </div>
+                                                <div className="text-sm text-gray-600">
+                                                    {selectedStudent} • ห้อง {selectedClassroom}
+                                                </div>
+                                            </div>
+                                            <div className={`flex items-center gap-2 text-lg font-bold ${timeRemaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
+                                                <i className="fas fa-clock"></i>
+                                                {timeRemaining} วินาที
+                                            </div>
+                                        </div>
+
+                                        <div className="p-8 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg">
+                                            <div className="text-center">
+                                                <h2 className="text-4xl font-bold mb-6">
+                                                    {questions[currentQuestionIndex].question}
+                                                </h2>
+                                                <div className="text-sm text-gray-500 mb-4">
+                                                    ({questions[currentQuestionIndex].points} คะแนน)
+                                                </div>
+                                                <input
+                                                    type="text"
+                                                    value={userAnswer}
+                                                    onChange={(e) => setUserAnswer(e.target.value)}
+                                                    onKeyPress={handleKeyPress}
+                                                    placeholder="กรอกคำตอบ"
+                                                    className="text-2xl text-center w-48 p-3 border-2 rounded-lg mx-auto block"
+                                                    autoFocus
+                                                />
+                                                {enableSpeech && speechSupported && (
+                                                    <div className="mt-4">
+                                                        <div className="flex justify-center gap-2 mb-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => startListening('th-TH')}
+                                                                disabled={isListening}
+                                                                className={`px-4 py-2 rounded-lg text-white ${isListening ? 'bg-red-500' : 'bg-blue-500 hover:bg-blue-600'}`}
+                                                            >
+                                                                <i className={`fas fa-microphone mr-1 ${isListening ? 'animate-pulse' : ''}`}></i>
+                                                                {isListening ? 'กำลังฟัง...' : 'พูดไทย'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => startListening('en-US')}
+                                                                disabled={isListening}
+                                                                className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-white"
+                                                            >
+                                                                พูดอังกฤษ
+                                                            </button>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 text-center">
+                                                            พูดตัวเลขโดยตรง เช่น "แปด" หรือ "eight"
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={handleNextQuestion}
+                                            className="w-full py-3 text-lg font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+                                            disabled={!userAnswer.trim()}
+                                        >
+                                            {currentQuestionIndex < questions.length - 1 ? 'ข้อถัดไป' : 'ส่งคำตอบ'}
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* หน้าสรุปผล */}
+                                {gameState === 'finished' && (
+                                    <div className="space-y-6">
+                                        <div className="text-center mb-6">
+                                            <i className="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
+                                            <h2 className="text-2xl font-bold mb-2">ทำข้อสอบเสร็จแล้ว!</h2>
+                                            <p className="text-lg text-gray-600">{selectedStudent} • ห้อง {selectedClassroom}</p>
+                                            <p className="text-sm text-gray-500">{currentQuizSet}</p>
+                                        </div>
+
+                                        <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg">
+                                            <div className="text-center">
+                                                <div className="text-5xl font-bold text-green-600 mb-2">
+                                                    {score} / {totalPossiblePoints}
+                                                </div>
+                                                <div className="text-lg text-gray-600">
+                                                    คะแนนที่ได้
+                                                </div>
+                                                <div className="text-2xl font-semibold mt-2">
+                                                    {((score / totalPossiblePoints) * 100).toFixed(1)}%
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <h3 className="text-lg font-semibold mb-3">สรุปคำตอบ</h3>
+                                            {answers.map((answer, index) => (
+                                                <div key={index} className={`p-3 rounded-lg ${answer.isCorrect ? 'bg-green-50' : 'bg-red-50'}`}>
+                                                    <div className="flex justify-between items-center">
+                                                        <div>
+                                                            <span className="font-semibold">ข้อ {index + 1}:</span> {answer.question}
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className={`font-semibold ${answer.isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                                                คำตอบ: {answer.userAnswer}
+                                                            </div>
+                                                            {!answer.isCorrect && (
+                                                                <div className="text-sm text-gray-600">
+                                                                    ที่ถูกต้อง: {answer.correctAnswer}
+                                                                </div>
+                                                            )}
+                                                            <div className="text-sm">
+                                                                {answer.points} คะแนน
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="flex gap-4">
+                                            <button
+                                                onClick={() => {
+                                                    setGameState('setup');
+                                                    setSelectedStudent('');
+                                                }}
+                                                className="flex-1 py-3 text-lg font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
+                                            >
+                                                ทำข้อสอบใหม่
+                                            </button>
+                                            <button
+                                                onClick={() => setGameState('history')}
+                                                className="flex-1 py-3 text-lg font-bold bg-gray-200 hover:bg-gray-300 rounded-lg"
+                                            >
+                                                ดูประวัติ
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<ExponentQuizApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
