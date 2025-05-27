@@ -148,7 +148,7 @@ This project is licensed under the MIT License.
 
 หากพบปัญหาหรือมีข้อเสนอแนะ:
 - Open an Issue
-- หรือติดต่อ: your-email@example.com
+- หรือติดต่อ: kengsarawut.j@gmail.com
 
 ---
 
