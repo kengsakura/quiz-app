@@ -58,27 +58,18 @@
             "นายวีระพล ชัยชนะ"
         ];
 
-        // ห้องเรียนเริ่มต้น
-        const defaultClassrooms = ["ม.1/1", "ม.1/2", "ม.2/1", "ม.2/2", "ม.3/1", "ม.3/2"];
-
         function ExponentQuizApp() {
             // States
             const [gameState, setGameState] = useState('setup');
-            const [students, setStudents] = useState(defaultStudents);
-            const [classrooms, setClassrooms] = useState(defaultClassrooms);
-            const [selectedStudent, setSelectedStudent] = useState('');
-            const [selectedClassroom, setSelectedClassroom] = useState('');
             const [questions, setQuestions] = useState(defaultQuestions);
             const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
             const [userAnswer, setUserAnswer] = useState('');
             const [answers, setAnswers] = useState([]);
-            const [timeRemaining, setTimeRemaining] = useState(5);
-            const [timePerQuestion, setTimePerQuestion] = useState(5);
+            const [timeRemaining, setTimeRemaining] = useState(10);
+            const [timePerQuestion, setTimePerQuestion] = useState(10);
             const [score, setScore] = useState(0);
-            const [showSettings, setShowSettings] = useState(false);
-            const [newStudent, setNewStudent] = useState('');
-            const [newClassroom, setNewClassroom] = useState('');
             const [testHistory, setTestHistory] = useState([]);
+            const [showSettings, setShowSettings] = useState(false);
             const [currentQuizSet, setCurrentQuizSet] = useState('ชุดที่ 1 (Default)');
             const [quizSets, setQuizSets] = useState({
                 'ชุดที่ 1 (Default)': defaultQuestions
@@ -86,10 +77,8 @@
             const [isListening, setIsListening] = useState(false);
             const [speechSupported, setSpeechSupported] = useState(true);
             const [enableSpeech, setEnableSpeech] = useState(true);
+            const [questionCount, setQuestionCount] = useState(20);
             
-            const fileInputRef = useRef(null);
-            const historyImportRef = useRef(null);
-
             // Timer effect
             useEffect(() => {
                 if (gameState === 'playing' && timeRemaining > 0) {
@@ -110,116 +99,126 @@
             }, []);
 
             // Speech recognition function
-            const startListening = (language = 'th-TH') => {
+            const toggleListening = (language = 'th-TH') => {
+                // If already listening, stop it
+                if (isListening) {
+                    setIsListening(false);
+                    return;
+                }
+                
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 
                 if (!SpeechRecognition) {
-                    alert('เบราว์เซอร์ของคุณไม่รองรับการพูดคำตอบ กรุณาใช้ Chrome, Edge หรือ Safari');
+                    alert('เบราว์เซอร์นี้ไม่รองรับการรับเสียง');
                     setSpeechSupported(false);
                     return;
                 }
-
-                const recognition = new SpeechRecognition();
-                recognition.lang = language;
-                recognition.continuous = false;
-                recognition.interimResults = false;
-
-                recognition.onstart = () => {
-                    setIsListening(true);
-                };
-
-                recognition.onresult = (event) => {
-                    const transcript = event.results[0][0].transcript;
-                    
-                    let numberText = transcript;
-                    
-                    if (language === 'th-TH') {
-                        // แปลงคำภาษาไทยเป็นตัวเลข
-                        const thaiNumbers = {
-                            'ศูนย์': '0', 'หนึ่ง': '1', 'สอง': '2', 'สาม': '3', 'สี่': '4',
-                            'ห้า': '5', 'หก': '6', 'เจ็ด': '7', 'แปด': '8', 'เก้า': '9',
-                            'สิบ': '10', 'ยี่สิบ': '20', 'สามสิบ': '30', 'สี่สิบ': '40',
-                            'ห้าสิบ': '50', 'หกสิบ': '60', 'เจ็ดสิบ': '70', 'แปดสิบ': '80',
-                            'เก้าสิบ': '90', 'ร้อย': '100', 'พัน': '1000', 'หมื่น': '10000'
-                        };
-
-                        for (const [thai, num] of Object.entries(thaiNumbers)) {
-                            numberText = numberText.replace(new RegExp(thai, 'g'), num);
-                        }
-                    } else {
-                        // สำหรับภาษาอังกฤษ
-                        const englishNumbers = {
-                            'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
-                            'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
-                            'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13',
-                            'fourteen': '14', 'fifteen': '15', 'sixteen': '16', 'seventeen': '17',
-                            'eighteen': '18', 'nineteen': '19', 'twenty': '20', 'thirty': '30',
-                            'forty': '40', 'fifty': '50', 'sixty': '60', 'seventy': '70',
-                            'eighty': '80', 'ninety': '90', 'hundred': '100', 'thousand': '1000'
-                        };
-                        
-                        numberText = numberText.toLowerCase();
-                        
-                        for (const [eng, num] of Object.entries(englishNumbers)) {
-                            numberText = numberText.replace(new RegExp(eng, 'g'), num);
-                        }
-                    }
-                    
-                    // เอาเฉพาะตัวเลข
-                    numberText = numberText.replace(/[^\d]/g, '');
-                    
-                    if (numberText) {
-                        setUserAnswer(numberText);
-                    } else {
-                        const match = transcript.match(/\d+/);
-                        if (match) {
-                            setUserAnswer(match[0]);
-                        }
-                    }
-                    
-                    setIsListening(false);
-                };
-
-                recognition.onerror = (event) => {
-                    console.error('Speech recognition error:', event.error);
-                    setIsListening(false);
-                    
-                    if (event.error === 'not-allowed') {
-                        alert('กรุณาอนุญาตการใช้ไมโครโฟน');
-                    } else if (event.error === 'no-speech') {
-                        alert('ไม่ได้ยินเสียง กรุณาพูดใหม่');
-                    }
-                };
-
-                recognition.onend = () => {
-                    setIsListening(false);
-                };
-
+                
                 try {
+                    // Create recognition object
+                    const recognition = new SpeechRecognition();
+                    recognition.lang = language;
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    
+                    // Set up event handlers
+                    recognition.onstart = () => {
+                        setIsListening(true);
+                    };
+                    
+                    recognition.onend = () => {
+                        setIsListening(false);
+                    };
+                    
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        setIsListening(false);
+                    };
+                    
+                    recognition.onresult = (event) => {
+                        // Get latest result
+                        const lastResult = event.results[event.results.length - 1];
+                        const transcript = lastResult[0].transcript.trim();
+                        
+                        let numberText = transcript;
+                        
+                        // Process Thai numbers
+                        if (language === 'th-TH') {
+                            const thaiNumbers = {
+                                'ศูนย์': '0', 'หนึ่ง': '1', 'สอง': '2', 'สาม': '3', 'สี่': '4',
+                                'ห้า': '5', 'หก': '6', 'เจ็ด': '7', 'แปด': '8', 'เก้า': '9',
+                                'เอ็ด': '1', 'ยี่': '2', 'สิบ': '10', 'ร้อย': '100', 'พัน': '1000'
+                            };
+                            
+                            for (const [thai, num] of Object.entries(thaiNumbers)) {
+                                numberText = numberText.replace(new RegExp(thai, 'g'), num);
+                            }
+                        } else {
+                            // Process English numbers
+                            const englishNumbers = {
+                                'zero': '0', 'one': '1', 'two': '2', 'three': '3', 'four': '4',
+                                'five': '5', 'six': '6', 'seven': '7', 'eight': '8', 'nine': '9',
+                                'ten': '10', 'eleven': '11', 'twelve': '12', 'thirteen': '13', 'fourteen': '14',
+                                'fifteen': '15', 'sixteen': '16', 'seventeen': '17', 'eighteen': '18', 'nineteen': '19',
+                                'twenty': '20', 'thirty': '30', 'forty': '40', 'fifty': '50',
+                                'sixty': '60', 'seventy': '70', 'eighty': '80', 'ninety': '90',
+                                'hundred': '100', 'thousand': '1000'
+                            };
+                            
+                            for (const [english, num] of Object.entries(englishNumbers)) {
+                                numberText = numberText.replace(new RegExp(english, 'g'), num);
+                            }
+                        }
+                        
+                        // Extract only numbers
+                        numberText = numberText.replace(/[^\d]/g, '');
+                        
+                        if (numberText) {
+                            setUserAnswer(numberText);
+                        } else {
+                            const match = transcript.match(/\d+/);
+                            if (match) {
+                                setUserAnswer(match[0]);
+                            }
+                        }
+                    };
+                    
+                    // Start recognition
                     recognition.start();
                 } catch (error) {
-                    console.error('Failed to start speech recognition:', error);
+                    console.error('ไม่สามารถสร้างออบเจ็คต์การรับเสียงได้:', error);
                     setIsListening(false);
                     alert('ไม่สามารถเริ่มการรับเสียงได้');
                 }
             };
 
+            // สุ่มข้อสอบตามจำนวนที่กำหนด
+            const getRandomQuestions = (allQuestions, count) => {
+                if (allQuestions.length <= count) {
+                    return [...allQuestions]; // ใช้ทุกข้อถ้ามีไม่พอ
+                }
+                
+                // สร้างสำเนาและสับเปลี่ยน
+                const shuffled = [...allQuestions];
+                for (let i = shuffled.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                }
+                
+                return shuffled.slice(0, count);
+            };
+            
             // เริ่มเกม
             const startGame = () => {
-                if (!selectedStudent) {
-                    alert('กรุณาเลือกชื่อนักเรียนก่อนเริ่มทำข้อสอบ');
-                    return;
-                }
-                if (!selectedClassroom) {
-                    alert('กรุณาเลือกห้องเรียนก่อนเริ่มทำข้อสอบ');
-                    return;
-                }
+                const allQuestions = quizSets[currentQuizSet] || defaultQuestions;
+                const selectedQuestions = getRandomQuestions(allQuestions, questionCount);
+                
                 setGameState('playing');
                 setCurrentQuestionIndex(0);
                 setAnswers([]);
                 setScore(0);
                 setTimeRemaining(timePerQuestion);
-                setQuestions(quizSets[currentQuizSet] || defaultQuestions);
+                setQuestions(selectedQuestions);
             };
 
             // ตรวจคำตอบและไปข้อถัดไป
@@ -251,8 +250,6 @@
                     const totalPossible = questions.reduce((sum, q) => sum + q.points, 0);
                     const newHistory = {
                         id: Date.now(),
-                        studentName: selectedStudent,
-                        classroom: selectedClassroom,
                         quizSet: currentQuizSet,
                         score: newScore,
                         totalScore: totalPossible,
@@ -280,90 +277,63 @@
                 }
             };
 
-            // นำเข้าข้อสอบจากไฟล์ JSON
-            const handleFileUpload = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const data = JSON.parse(e.target.result);
-                            if (Array.isArray(data) && data.length > 0) {
-                                const setName = prompt('ตั้งชื่อชุดข้อสอบ:', `ชุดที่ ${Object.keys(quizSets).length + 1}`);
-                                if (setName) {
-                                    setQuizSets({...quizSets, [setName]: data});
-                                    setCurrentQuizSet(setName);
-                                    alert('นำเข้าข้อสอบสำเร็จ!');
-                                }
-                            } else {
-                                alert('รูปแบบไฟล์ไม่ถูกต้อง');
-                            }
-                        } catch (error) {
-                            alert('ไม่สามารถอ่านไฟล์ได้');
-                        }
-                    };
-                    reader.readAsText(file);
+            // โหลดข้อสอบจากไฟล์ JSON
+            const loadQuizFromFile = async (filename) => {
+                try {
+                    console.log(`กำลังโหลดไฟล์: ${filename}`);
+                    const response = await fetch(filename);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const text = await response.text();
+                    console.log(`ได้รับข้อมูล: ${text.substring(0, 100)}...`);
+                    
+                    const data = JSON.parse(text);
+                    
+                    // ตรวจสอบรูปแบบไฟล์ใหม่ที่มีชื่อข้อสอบ
+                    if (data.name && data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+                        // ใช้ชื่อจากไฟล์ JSON
+                        const setName = data.name;
+                        console.log(`ชุดข้อสอบ "${setName}" มี ${data.questions.length} ข้อ`);
+                        setQuizSets(prevSets => {
+                            const newSets = {...prevSets, [setName]: data.questions};
+                            console.log('ชุดข้อสอบทั้งหมด:', Object.keys(newSets));
+                            return newSets;
+                        });
+                        setCurrentQuizSet(setName);
+                    } 
+                    // รองรับรูปแบบเก่าที่เป็นแค่ array ของคำถาม
+                    else if (Array.isArray(data) && data.length > 0) {
+                        // ดึงชื่อไฟล์จาก path
+                        const setName = filename.split('/').pop().replace('.json', '');
+                        console.log(`ชุดข้อสอบ ${setName} มี ${data.length} ข้อ`);
+                        setQuizSets(prevSets => {
+                            const newSets = {...prevSets, [setName]: data};
+                            console.log('ชุดข้อสอบทั้งหมด:', Object.keys(newSets));
+                            return newSets;
+                        });
+                        setCurrentQuizSet(setName);
+                    } else {
+                        console.error('ข้อมูลไม่ถูกต้อง:', data);
+                    }
+                } catch (error) {
+                    console.error('ไม่สามารถโหลดไฟล์ข้อสอบได้:', error);
+                    console.error(`ไม่สามารถโหลดไฟล์ ${filename} ได้: ${error.message}`);
                 }
             };
-
-            // นำเข้าประวัติ
-            const handleHistoryImport = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        try {
-                            const data = JSON.parse(e.target.result);
-                            if (data.history && data.students && data.classrooms && data.quizSets) {
-                                setTestHistory(data.history);
-                                setStudents(data.students);
-                                setClassrooms(data.classrooms);
-                                setQuizSets(data.quizSets);
-                                alert('นำเข้าข้อมูลสำเร็จ!');
-                            } else {
-                                alert('รูปแบบไฟล์ไม่ถูกต้อง');
-                            }
-                        } catch (error) {
-                            alert('ไม่สามารถอ่านไฟล์ได้');
-                        }
-                    };
-                    reader.readAsText(file);
-                }
-            };
-
-            // ส่งออกประวัติ
-            const exportHistory = () => {
-                const data = {
-                    history: testHistory,
-                    students: students,
-                    classrooms: classrooms,
-                    quizSets: quizSets,
-                    exportDate: new Date().toLocaleString('th-TH')
-                };
-                const dataStr = JSON.stringify(data, null, 2);
-                const dataBlob = new Blob([dataStr], {type: 'application/json'});
-                const url = URL.createObjectURL(dataBlob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `quiz_history_${new Date().getTime()}.json`;
-                link.click();
-            };
-
-            // เพิ่มนักเรียน
-            const addStudent = () => {
-                if (newStudent.trim() && !students.includes(newStudent.trim())) {
-                    setStudents([...students, newStudent.trim()]);
-                    setNewStudent('');
-                }
-            };
-
-            // เพิ่มห้องเรียน
-            const addClassroom = () => {
-                if (newClassroom.trim() && !classrooms.includes(newClassroom.trim())) {
-                    setClassrooms([...classrooms, newClassroom.trim()]);
-                    setNewClassroom('');
-                }
-            };
+            
+            // โหลดข้อสอบเมื่อเริ่มต้น
+            useEffect(() => {
+                // ตั้งค่าเริ่มต้นด้วยชุดข้อสอบ default
+                setQuizSets({
+                    'ชุดที่ 1 (Default)': defaultQuestions
+                });
+                
+                // โหลดข้อสอบจากไฟล์ item1.json
+                setTimeout(() => {
+                    loadQuizFromFile('item1.json');
+                }, 1000);
+            }, []);
 
             // คำนวณคะแนนรวม
             const totalPossiblePoints = questions.reduce((sum, q) => sum + q.points, 0);
@@ -379,46 +349,6 @@
                                 {/* หน้าตั้งค่า */}
                                 {gameState === 'setup' && (
                                     <div className="space-y-6">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div>
-                                                <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
-                                                    <i className="fas fa-school"></i>
-                                                    เลือกห้องเรียน
-                                                </label>
-                                                <select 
-                                                    value={selectedClassroom} 
-                                                    onChange={(e) => setSelectedClassroom(e.target.value)}
-                                                    className="w-full p-2 border rounded-lg"
-                                                >
-                                                    <option value="">เลือกห้องเรียน</option>
-                                                    {classrooms.map((classroom, index) => (
-                                                        <option key={index} value={classroom}>
-                                                            {classroom}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div>
-                                                <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
-                                                    <i className="fas fa-user"></i>
-                                                    เลือกชื่อนักเรียน
-                                                </label>
-                                                <select 
-                                                    value={selectedStudent} 
-                                                    onChange={(e) => setSelectedStudent(e.target.value)}
-                                                    className="w-full p-2 border rounded-lg"
-                                                >
-                                                    <option value="">เลือกชื่อนักเรียน</option>
-                                                    {students.map((student, index) => (
-                                                        <option key={index} value={student}>
-                                                            {student}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                        </div>
-
                                         <div>
                                             <label className="text-lg mb-2 flex items-center gap-2 font-semibold">
                                                 <i className="fas fa-file-alt"></i>
@@ -447,52 +377,12 @@
                                             </button>
                                             
                                             <button
-                                                onClick={() => fileInputRef.current?.click()}
-                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
-                                            >
-                                                <i className="fas fa-upload"></i>
-                                                นำเข้าข้อสอบ
-                                            </button>
-
-                                            <button
                                                 onClick={() => setGameState('history')}
                                                 className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
                                             >
                                                 <i className="fas fa-history"></i>
                                                 ดูประวัติ ({testHistory.length})
                                             </button>
-
-                                            <button
-                                                onClick={exportHistory}
-                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
-                                                disabled={testHistory.length === 0}
-                                            >
-                                                <i className="fas fa-download"></i>
-                                                บันทึกข้อมูล
-                                            </button>
-
-                                            <button
-                                                onClick={() => historyImportRef.current?.click()}
-                                                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg flex items-center gap-2"
-                                            >
-                                                <i className="fas fa-save"></i>
-                                                โหลดข้อมูล
-                                            </button>
-
-                                            <input
-                                                ref={fileInputRef}
-                                                type="file"
-                                                accept=".json"
-                                                onChange={handleFileUpload}
-                                                className="hidden"
-                                            />
-                                            <input
-                                                ref={historyImportRef}
-                                                type="file"
-                                                accept=".json"
-                                                onChange={handleHistoryImport}
-                                                className="hidden"
-                                            />
                                         </div>
 
                                         {/* แผงตั้งค่า */}
@@ -508,6 +398,23 @@
                                                         max="60"
                                                         className="w-full p-2 border rounded-lg mt-1"
                                                     />
+                                                </div>
+                                                
+                                                <div>
+                                                    <label className="font-semibold">จำนวนข้อสอบ</label>
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            value={questionCount}
+                                                            onChange={(e) => setQuestionCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+                                                            min="1"
+                                                            max="50"
+                                                            className="w-full p-2 border rounded-lg mt-1"
+                                                        />
+                                                        <span className="text-sm text-gray-500 mt-1">
+                                                            (สุ่มจากทั้งหมด {quizSets[currentQuizSet]?.length || 0} ข้อ)
+                                                        </span>
+                                                    </div>
                                                 </div>
 
                                                 <div>
@@ -528,46 +435,9 @@
                                                 </div>
 
                                                 <div>
-                                                    <label className="font-semibold">เพิ่มห้องเรียน</label>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <input
-                                                            value={newClassroom}
-                                                            onChange={(e) => setNewClassroom(e.target.value)}
-                                                            placeholder="ชื่อห้อง"
-                                                            onKeyPress={(e) => e.key === 'Enter' && addClassroom()}
-                                                            className="flex-1 p-2 border rounded-lg"
-                                                        />
-                                                        <button 
-                                                            onClick={addClassroom}
-                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                                        >
-                                                            เพิ่ม
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div>
-                                                    <label className="font-semibold">เพิ่มนักเรียน</label>
-                                                    <div className="flex gap-2 mt-1">
-                                                        <input
-                                                            value={newStudent}
-                                                            onChange={(e) => setNewStudent(e.target.value)}
-                                                            placeholder="ชื่อ-นามสกุล"
-                                                            onKeyPress={(e) => e.key === 'Enter' && addStudent()}
-                                                            className="flex-1 p-2 border rounded-lg"
-                                                        />
-                                                        <button 
-                                                            onClick={addStudent}
-                                                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                                        >
-                                                            เพิ่ม
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <div>
-                                                    <p>ข้อสอบปัจจุบัน: {quizSets[currentQuizSet]?.length || 0} ข้อ</p>
-                                                    <p>คะแนนรวม: {quizSets[currentQuizSet]?.reduce((sum, q) => sum + q.points, 0) || 0} คะแนน</p>
+                                                    <p>ข้อสอบทั้งหมด: {quizSets[currentQuizSet]?.length || 0} ข้อ</p>
+                                                    <p>จะสุ่มทำ: {Math.min(questionCount, quizSets[currentQuizSet]?.length || 0)} ข้อ</p>
+                                                    <p>คะแนนรวมทั้งหมด: {quizSets[currentQuizSet]?.reduce((sum, q) => sum + q.points, 0) || 0} คะแนน</p>
                                                 </div>
                                             </div>
                                         )}
@@ -575,15 +445,29 @@
                                         <button
                                             onClick={startGame}
                                             className="w-full py-3 text-lg font-bold bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600"
-                                            disabled={!selectedStudent || !selectedClassroom}
                                         >
                                             <i className="fas fa-play mr-2"></i>
                                             เริ่มทำข้อสอบ
                                         </button>
 
                                         <div className="bg-blue-50 p-4 rounded-lg">
-                                            <strong>รูปแบบไฟล์ JSON สำหรับนำเข้าข้อสอบ:</strong>
-                                            <pre className="mt-2 text-xs bg-gray-100 p-2 rounded">
+                                            <strong>โหลดชุดข้อสอบจากไฟล์:</strong>
+                                            <div className="mt-2 flex flex-wrap gap-2">
+                                                <button 
+                                                    onClick={() => loadQuizFromFile('item1.json')}
+                                                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                                >
+                                                    โหลด item1.json
+                                                </button>
+                                                <button 
+                                                    onClick={() => loadQuizFromFile('item2.json')}
+                                                    className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                                                >
+                                                    โหลด item2.json
+                                                </button>
+                                            </div>
+                                            
+                                            <pre className="mt-4 text-xs bg-gray-100 p-2 rounded">
 {`[
   {"id": 1, "question": "2³ = ?", "answer": "8", "points": 1},
   {"id": 2, "question": "5² = ?", "answer": "25", "points": 1}
@@ -626,8 +510,8 @@
                                                     <div key={record.id} className="p-4 bg-white border rounded-lg shadow">
                                                         <div className="flex justify-between items-start">
                                                             <div>
-                                                                <div className="font-semibold text-lg">{record.studentName}</div>
-                                                                <div className="text-gray-600">ห้อง {record.classroom} • {record.quizSet}</div>
+                                                                <div className="font-semibold text-lg">{record.quizSet}</div>
+                                                                <div className="text-gray-600">ทำเมื่อ {record.date}</div>
                                                                 <div className="text-sm text-gray-500">{record.date}</div>
                                                             </div>
                                                             <div className="text-right">
@@ -655,7 +539,7 @@
                                                     ข้อที่ {currentQuestionIndex + 1} / {questions.length}
                                                 </div>
                                                 <div className="text-sm text-gray-600">
-                                                    {selectedStudent} • ห้อง {selectedClassroom}
+                                                    {currentQuizSet}
                                                 </div>
                                             </div>
                                             <div className={`flex items-center gap-2 text-lg font-bold ${timeRemaining <= 3 ? 'text-red-500' : 'text-blue-600'}`}>
@@ -686,20 +570,19 @@
                                                         <div className="flex justify-center gap-2 mb-2">
                                                             <button
                                                                 type="button"
-                                                                onClick={() => startListening('th-TH')}
-                                                                disabled={isListening}
+                                                                onClick={() => toggleListening('th-TH')}
                                                                 className={`px-4 py-2 rounded-lg text-white ${isListening ? 'bg-red-500' : 'bg-blue-500 hover:bg-blue-600'}`}
                                                             >
                                                                 <i className={`fas fa-microphone mr-1 ${isListening ? 'animate-pulse' : ''}`}></i>
-                                                                {isListening ? 'กำลังฟัง...' : 'พูดไทย'}
+                                                                {isListening ? 'กำลังฟัง... (คลิกเพื่อปิด)' : 'เปิดไมค์ (ไทย)'}
                                                             </button>
                                                             <button
                                                                 type="button"
-                                                                onClick={() => startListening('en-US')}
+                                                                onClick={() => toggleListening('en-US')}
                                                                 disabled={isListening}
                                                                 className="px-4 py-2 bg-gray-500 hover:bg-gray-600 rounded-lg text-white"
                                                             >
-                                                                พูดอังกฤษ
+                                                                เปิดไมค์ (อังกฤษ)
                                                             </button>
                                                         </div>
                                                         <div className="text-xs text-gray-500 text-center">
@@ -726,7 +609,7 @@
                                         <div className="text-center mb-6">
                                             <i className="fas fa-trophy text-6xl text-yellow-500 mb-4"></i>
                                             <h2 className="text-2xl font-bold mb-2">ทำข้อสอบเสร็จแล้ว!</h2>
-                                            <p className="text-lg text-gray-600">{selectedStudent} • ห้อง {selectedClassroom}</p>
+                                            <p className="text-lg text-gray-600">{currentQuizSet}</p>
                                             <p className="text-sm text-gray-500">{currentQuizSet}</p>
                                         </div>
 
@@ -774,7 +657,6 @@
                                             <button
                                                 onClick={() => {
                                                     setGameState('setup');
-                                                    setSelectedStudent('');
                                                 }}
                                                 className="flex-1 py-3 text-lg font-bold bg-blue-500 hover:bg-blue-600 text-white rounded-lg"
                                             >
@@ -790,6 +672,9 @@
                                     </div>
                                 )}
                             </div>
+                        </div>
+                        <div className="text-center text-gray-500 text-xs mt-6 pb-2">
+                            © 2025 ครูเก่ง kengsarawut.j@gmail.com - แอปทดสอบเลขยกกำลัง
                         </div>
                     </div>
                 </div>

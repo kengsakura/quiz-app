@@ -1,0 +1,71 @@
+{
+  "name": "แบบทดสอบเลขยกกำลัง 01",
+  "questions": [
+    {"id": 1, "question": "2¹ = ?", "answer": "2", "points": 1},
+    {"id": 2, "question": "2² = ?", "answer": "4", "points": 1},
+    {"id": 3, "question": "2³ = ?", "answer": "8", "points": 1},
+    {"id": 4, "question": "2⁴ = ?", "answer": "16", "points": 1},
+    {"id": 5, "question": "2⁵ = ?", "answer": "32", "points": 1},
+    {"id": 6, "question": "2⁶ = ?", "answer": "64", "points": 1},
+    {"id": 7, "question": "2⁷ = ?", "answer": "128", "points": 1},
+    {"id": 8, "question": "2⁸ = ?", "answer": "256", "points": 1},
+    {"id": 9, "question": "2⁹ = ?", "answer": "512", "points": 1},
+    {"id": 10, "question": "2¹⁰ = ?", "answer": "1024", "points": 1},
+  
+    {"id": 11, "question": "3¹ = ?", "answer": "3", "points": 1},
+    {"id": 12, "question": "3² = ?", "answer": "9", "points": 1},
+    {"id": 13, "question": "3³ = ?", "answer": "27", "points": 1},
+    {"id": 14, "question": "3⁴ = ?", "answer": "81", "points": 1},
+    {"id": 15, "question": "3⁵ = ?", "answer": "243", "points": 1},
+    {"id": 16, "question": "3⁶ = ?", "answer": "729", "points": 1},
+  
+    {"id": 17, "question": "4¹ = ?", "answer": "4", "points": 1},
+    {"id": 18, "question": "4² = ?", "answer": "16", "points": 1},
+    {"id": 19, "question": "4³ = ?", "answer": "64", "points": 1},
+    {"id": 20, "question": "4⁴ = ?", "answer": "256", "points": 1},
+    {"id": 21, "question": "4⁵ = ?", "answer": "1024", "points": 1},
+  
+    {"id": 22, "question": "5¹ = ?", "answer": "5", "points": 1},
+    {"id": 23, "question": "5² = ?", "answer": "25", "points": 1},
+    {"id": 24, "question": "5³ = ?", "answer": "125", "points": 1},
+    {"id": 25, "question": "5⁴ = ?", "answer": "625", "points": 1},
+    {"id": 26, "question": "5⁵ = ?", "answer": "3125", "points": 1},
+  
+    {"id": 27, "question": "6¹ = ?", "answer": "6", "points": 1},
+    {"id": 28, "question": "6² = ?", "answer": "36", "points": 1},
+    {"id": 29, "question": "6³ = ?", "answer": "216", "points": 1},
+    {"id": 30, "question": "6⁴ = ?", "answer": "1296", "points": 1},
+  
+    {"id": 31, "question": "7¹ = ?", "answer": "7", "points": 1},
+    {"id": 32, "question": "7² = ?", "answer": "49", "points": 1},
+    {"id": 33, "question": "7³ = ?", "answer": "343", "points": 1},
+  
+    {"id": 34, "question": "8¹ = ?", "answer": "8", "points": 1},
+    {"id": 35, "question": "8² = ?", "answer": "64", "points": 1},
+    {"id": 36, "question": "8³ = ?", "answer": "512", "points": 1},
+  
+    {"id": 37, "question": "9¹ = ?", "answer": "9", "points": 1},
+    {"id": 38, "question": "9² = ?", "answer": "81", "points": 1},
+    {"id": 39, "question": "9³ = ?", "answer": "729", "points": 1},
+  
+    {"id": 40, "question": "10¹ = ?", "answer": "10", "points": 1},
+    {"id": 41, "question": "10² = ?", "answer": "100", "points": 1},
+    {"id": 42, "question": "10³ = ?", "answer": "1000", "points": 1},
+  
+    {"id": 43, "question": "11¹ = ?", "answer": "11", "points": 1},
+    {"id": 44, "question": "11² = ?", "answer": "121", "points": 1},
+  
+    {"id": 45, "question": "12¹ = ?", "answer": "12", "points": 1},
+    {"id": 46, "question": "12² = ?", "answer": "144", "points": 1},
+  
+    {"id": 47, "question": "13¹ = ?", "answer": "13", "points": 1},
+    {"id": 48, "question": "13² = ?", "answer": "169", "points": 1},
+  
+    {"id": 49, "question": "14¹ = ?", "answer": "14", "points": 1},
+    {"id": 50, "question": "14² = ?", "answer": "196", "points": 1},
+  
+    {"id": 51, "question": "15¹ = ?", "answer": "15", "points": 1},
+    {"id": 52, "question": "15² = ?", "answer": "225", "points": 1}
+  ]
+}
+  
